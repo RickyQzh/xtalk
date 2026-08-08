@@ -86,15 +86,30 @@ impl TtsManager {
     }
 
     async fn run_worker(self: Arc<Self>, bus: Arc<EventBus>) {
+        // Session token for this worker. `on_stop` cancels it and installs a
+        // fresh token for any post-stop enqueue / respawn.
+        let session_token = {
+            let state = self.state.lock().expect("tts state poisoned");
+            state.cancel.clone()
+        };
+
         bus.publish(Event::TtsStarted { meta: self.meta() })
             .await;
 
-        let mut cancelled = false;
+        let mut terminal_stopped = false;
         loop {
-            let (text, token) = {
+            let text = {
                 let mut state = self.state.lock().expect("tts state poisoned");
+                // Check cancel *before* dequeue so post-stop enqueued texts
+                // are left for the next worker (on_stop already cleared the
+                // pre-stop queue).
+                if session_token.is_cancelled() {
+                    state.worker_running = false;
+                    terminal_stopped = true;
+                    break;
+                }
                 match state.queue.pop_front() {
-                    Some(text) => (text, state.cancel.clone()),
+                    Some(text) => text,
                     None => {
                         state.worker_running = false;
                         break;
@@ -102,37 +117,28 @@ impl TtsManager {
                 }
             };
 
-            if token.is_cancelled() {
-                cancelled = true;
-                break;
-            }
-
-            match self.synthesize_one(&bus, &text, &token).await {
+            match self.synthesize_one(&bus, &text, &session_token).await {
                 SynthOutcome::Finished => {}
                 SynthOutcome::Cancelled => {
-                    cancelled = true;
+                    terminal_stopped = true;
+                    let mut state = self.state.lock().expect("tts state poisoned");
+                    state.worker_running = false;
+                    // Do NOT queue.clear() — on_stop already cleared; texts
+                    // enqueued after stop must survive for respawn.
                     break;
                 }
                 SynthOutcome::Error => {
-                    // Match prior behavior: surface error, end this session
-                    // without a finished/stopped terminal event.
+                    // ErrorOccurred already published inside synthesize_one.
+                    // Emit a terminal TTS event so TurnTaking depth decrements.
+                    terminal_stopped = true;
                     let mut state = self.state.lock().expect("tts state poisoned");
                     state.worker_running = false;
-                    self.spawn_worker_if_needed(bus);
-                    return;
+                    break;
                 }
             }
         }
 
-        {
-            let mut state = self.state.lock().expect("tts state poisoned");
-            state.worker_running = false;
-            if cancelled {
-                state.queue.clear();
-            }
-        }
-
-        if cancelled {
+        if terminal_stopped {
             bus.publish(Event::TtsStopped { meta: self.meta() })
                 .await;
         } else {

@@ -163,3 +163,90 @@ async fn speech_start_cancels_tts() {
         "interrupted TTS should not emit tts.finished; got {got:?}"
     );
 }
+
+/// After stop clears the queue, text enqueued during cancelled wind-down must
+/// still be synthesized by a respawned worker (must not be cleared again).
+#[tokio::test]
+async fn cancel_preserves_post_stop_enqueued_text() {
+    let tts: Arc<dyn Tts> = Arc::new(SlowTts {
+        delay: Duration::from_millis(300),
+        sample_rate: 48_000,
+    });
+
+    let managers: Vec<Arc<dyn Manager>> = vec![
+        Arc::new(TtsManager::new("s1", Arc::clone(&tts))),
+        Arc::new(TurnTakingManager::new("s1")),
+    ];
+
+    let pipeline = Box::new(
+        DefaultPipeline::builder()
+            .tts(tts.clone_box())
+            .build(),
+    );
+    let service = Service::new("s1", pipeline, managers);
+    let bus = service.bus();
+
+    let names = Arc::new(Mutex::new(Vec::<String>::new()));
+    record_type_names(
+        &bus,
+        Arc::clone(&names),
+        &[
+            "tts.started",
+            "tts.stopped",
+            "tts.finished",
+            "tts.chunk_ready",
+            "turn.tts_stop_requested",
+        ],
+    );
+
+    let meta = EventMeta::new("s1");
+    bus.publish(Event::ResponseUpdate {
+        meta: meta.clone(),
+        text: "first".into(),
+    })
+    .await;
+
+    wait_until(&names, |n| n.iter().any(|t| t == "tts.started")).await;
+
+    // Cancel in-flight session.
+    bus.publish(Event::TurnTtsStopRequested {
+        meta: meta.clone(),
+    })
+    .await;
+
+    // Enqueue during wind-down (after on_stop cleared the queue).
+    bus.publish(Event::ResponseUpdate {
+        meta: meta.clone(),
+        text: "after-stop".into(),
+    })
+    .await;
+
+    wait_until(&names, |n| {
+        let started = n.iter().filter(|t| *t == "tts.started").count();
+        let finished = n.iter().any(|t| t == "tts.finished");
+        let stopped = n.iter().any(|t| t == "tts.stopped");
+        started >= 2 && stopped && finished
+    })
+    .await;
+
+    let got = names.lock().unwrap().clone();
+    assert_subsequence_loose(
+        &got,
+        &["tts.started", "tts.stopped", "tts.started", "tts.finished"],
+    );
+}
+
+fn assert_subsequence_loose(haystack: &[String], needle: &[&str]) {
+    let mut from = 0;
+    for expected in needle {
+        let pos = haystack[from..]
+            .iter()
+            .position(|t| t == expected)
+            .unwrap_or_else(|| {
+                panic!(
+                    "missing `{expected}` after index {from} in sequence:\n  {haystack:?}\nexpected subsequence:\n  {needle:?}"
+                )
+            });
+        from += pos + 1;
+    }
+}
