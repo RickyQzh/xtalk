@@ -93,8 +93,7 @@ impl TtsManager {
             state.cancel.clone()
         };
 
-        bus.publish(Event::TtsStarted { meta: self.meta() })
-            .await;
+        bus.publish(Event::TtsStarted { meta: self.meta() }).await;
 
         let mut terminal_stopped = false;
         loop {
@@ -139,11 +138,9 @@ impl TtsManager {
         }
 
         if terminal_stopped {
-            bus.publish(Event::TtsStopped { meta: self.meta() })
-                .await;
+            bus.publish(Event::TtsStopped { meta: self.meta() }).await;
         } else {
-            bus.publish(Event::TtsFinished { meta: self.meta() })
-                .await;
+            bus.publish(Event::TtsFinished { meta: self.meta() }).await;
         }
 
         // Work may have been enqueued while this session was winding down

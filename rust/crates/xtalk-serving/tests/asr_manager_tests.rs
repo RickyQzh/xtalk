@@ -90,20 +90,16 @@ async fn asr_start_end_via_turn_events() {
         sample_rate: 16000,
     })
     .await;
-    bus.publish(Event::TurnAsrStartRequested {
-        meta: meta.clone(),
-    })
-    .await;
+    bus.publish(Event::TurnAsrStartRequested { meta: meta.clone() })
+        .await;
     bus.publish(Event::AudioFrameReceived {
         meta: meta.clone(),
         audio_data: vec![2; 320],
         sample_rate: 16000,
     })
     .await;
-    bus.publish(Event::TurnAsrEndRequested {
-        meta: meta.clone(),
-    })
-    .await;
+    bus.publish(Event::TurnAsrEndRequested { meta: meta.clone() })
+        .await;
 
     let got = finals.lock().unwrap().clone();
     assert_eq!(got, vec!["turn-ok".to_string()]);

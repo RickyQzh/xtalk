@@ -66,10 +66,8 @@ impl TurnTakingManager {
 
         bus.publish(Event::TurnTtsStopRequested { meta: self.meta() })
             .await;
-        bus.publish(Event::TurnLlmAgentStopRequested {
-            meta: self.meta(),
-        })
-        .await;
+        bus.publish(Event::TurnLlmAgentStopRequested { meta: self.meta() })
+            .await;
     }
 }
 

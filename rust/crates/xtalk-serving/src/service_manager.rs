@@ -16,9 +16,8 @@ use crate::session_limiter::{LimitError, SessionLimiter, SessionPermit};
 pub type PipelineFactory = Arc<dyn Fn() -> Box<dyn Pipeline> + Send + Sync>;
 
 /// Builds managers/gateways once the session bus and WebSocket sink exist.
-pub type ManagerFactory = Arc<
-    dyn Fn(&str, &dyn Pipeline, Arc<EventBus>, Arc<dyn WsSink>) -> ManagerBundle + Send + Sync,
->;
+pub type ManagerFactory =
+    Arc<dyn Fn(&str, &dyn Pipeline, Arc<EventBus>, Arc<dyn WsSink>) -> ManagerBundle + Send + Sync>;
 
 struct SessionEntry {
     service: Arc<Service>,

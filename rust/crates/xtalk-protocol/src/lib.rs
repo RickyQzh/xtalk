@@ -22,7 +22,9 @@ pub enum ProtocolError {
 /// Parsed inbound control message from the frontend.
 #[derive(Debug, Clone, PartialEq)]
 pub enum InboundMessage {
-    Ping { timestamp: f64 },
+    Ping {
+        timestamp: f64,
+    },
     VadSpeechStart,
     VadSpeechEnd,
     TtsPlaybackFinished,
@@ -33,12 +35,16 @@ pub enum InboundMessage {
         server_recv_ts: f64,
         client_recv_ts: f64,
     },
-    ChangeVoice { voice_name: String },
+    ChangeVoice {
+        voice_name: String,
+    },
     ChangeEmotion {
         emotion_name: String,
         emotion_vector: Value,
     },
-    ChangeTtsSpeed { speed: f64 },
+    ChangeTtsSpeed {
+        speed: f64,
+    },
     Unknown,
 }
 

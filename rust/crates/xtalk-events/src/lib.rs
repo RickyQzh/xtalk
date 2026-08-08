@@ -91,10 +91,7 @@ pub enum Event {
         error_message: String,
     },
     #[serde(rename = "session.config_received")]
-    SessionConfigReceived {
-        meta: EventMeta,
-        config: Value,
-    },
+    SessionConfigReceived { meta: EventMeta, config: Value },
     Extension {
         meta: EventMeta,
         type_name: String,

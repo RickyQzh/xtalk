@@ -38,10 +38,7 @@ impl AuthMode {
     /// Authorize a WebSocket upgrade. [`AuthMode::Disabled`] always allows.
     ///
     /// Returns an optional user id when auth is enforced in later phases.
-    pub fn authorize_ws(
-        &self,
-        _token: Option<&str>,
-    ) -> Result<Option<String>, AuthError> {
+    pub fn authorize_ws(&self, _token: Option<&str>) -> Result<Option<String>, AuthError> {
         match self {
             AuthMode::Disabled => Ok(None),
         }

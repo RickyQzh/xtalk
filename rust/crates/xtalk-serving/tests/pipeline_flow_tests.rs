@@ -193,11 +193,7 @@ async fn multi_response_update_fifo_order() {
         Arc::new(TurnTakingManager::new("s1")),
     ];
 
-    let pipeline = Box::new(
-        DefaultPipeline::builder()
-            .tts(tts.clone_box())
-            .build(),
-    );
+    let pipeline = Box::new(DefaultPipeline::builder().tts(tts.clone_box()).build());
     let service = Service::new("s1", pipeline, managers);
     let bus = service.bus();
 
@@ -205,7 +201,12 @@ async fn multi_response_update_fifo_order() {
     record_type_names(
         &bus,
         Arc::clone(&names),
-        &["tts.started", "tts.chunk_ready", "tts.finished", "tts.stopped"],
+        &[
+            "tts.started",
+            "tts.chunk_ready",
+            "tts.finished",
+            "tts.stopped",
+        ],
     );
 
     let meta = EventMeta::new("s1");
@@ -258,11 +259,7 @@ async fn tts_error_emits_terminal_and_disarms_barge_in() {
         Arc::new(TurnTakingManager::new("s1")),
     ];
 
-    let pipeline = Box::new(
-        DefaultPipeline::builder()
-            .tts(tts.clone_box())
-            .build(),
-    );
+    let pipeline = Box::new(DefaultPipeline::builder().tts(tts.clone_box()).build());
     let service = Service::new("s1", pipeline, managers);
     let bus = service.bus();
 

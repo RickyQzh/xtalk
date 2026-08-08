@@ -2,6 +2,7 @@
 
 use serde::Deserialize;
 use serde_json::Value;
+use std::str::FromStr;
 use thiserror::Error;
 use xtalk_models::{DummyAgent, DummyAsr, DummyTts, DummyVad};
 use xtalk_pipeline::DefaultPipeline;
@@ -60,12 +61,16 @@ pub enum ConfigError {
     },
 }
 
-impl ServerConfig {
+impl FromStr for ServerConfig {
+    type Err = ConfigError;
+
     /// Parse config from a JSON string.
-    pub fn from_str(json: &str) -> Result<Self, ConfigError> {
+    fn from_str(json: &str) -> Result<Self, Self::Err> {
         Ok(serde_json::from_str(json)?)
     }
+}
 
+impl ServerConfig {
     /// Load config from a filesystem path.
     pub fn from_path(path: impl AsRef<std::path::Path>) -> Result<Self, ConfigError> {
         let path_ref = path.as_ref();
@@ -121,12 +126,10 @@ fn build_dummy_tts(spec: &ModelSpec) -> Result<DummyTts, ConfigError> {
     require_dummy("tts", spec)?;
     let sample_rate = match spec.params.get("sample_rate") {
         None => 48_000u32,
-        Some(Value::Number(n)) => n
-            .as_u64()
-            .ok_or(ConfigError::InvalidParam {
-                slot: "tts",
-                param: "sample_rate",
-            })? as u32,
+        Some(Value::Number(n)) => n.as_u64().ok_or(ConfigError::InvalidParam {
+            slot: "tts",
+            param: "sample_rate",
+        })? as u32,
         Some(_) => {
             return Err(ConfigError::InvalidParam {
                 slot: "tts",
@@ -155,6 +158,7 @@ fn build_dummy_vad(spec: &ModelSpec) -> Result<DummyVad, ConfigError> {
 #[cfg(test)]
 mod tests {
     use super::{build_pipeline, ServerConfig};
+    use std::str::FromStr;
     use xtalk_pipeline::Pipeline;
 
     #[test]

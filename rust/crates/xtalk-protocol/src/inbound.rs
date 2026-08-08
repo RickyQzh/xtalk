@@ -45,10 +45,7 @@ pub fn parse_inbound_text(text: &str) -> Result<InboundMessage, ProtocolError> {
                 .unwrap_or_else(|| Value::Array(vec![])),
         },
         "change_tts_speed" => InboundMessage::ChangeTtsSpeed {
-            speed: value
-                .get("speed")
-                .and_then(|v| v.as_f64())
-                .unwrap_or(1.0),
+            speed: value.get("speed").and_then(|v| v.as_f64()).unwrap_or(1.0),
         },
         _ => InboundMessage::Unknown,
     })

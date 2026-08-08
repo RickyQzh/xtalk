@@ -40,10 +40,7 @@ impl LlmAgentGenerationManager {
             *guard = Some(token.clone());
         }
 
-        let ctx = AgentContext {
-            context_type,
-            text,
-        };
+        let ctx = AgentContext { context_type, text };
 
         match self.agent.accept(ctx, token.clone()).await {
             Ok(parts) => {

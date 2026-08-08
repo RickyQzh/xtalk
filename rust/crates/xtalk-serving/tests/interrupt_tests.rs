@@ -178,11 +178,7 @@ async fn cancel_preserves_post_stop_enqueued_text() {
         Arc::new(TurnTakingManager::new("s1")),
     ];
 
-    let pipeline = Box::new(
-        DefaultPipeline::builder()
-            .tts(tts.clone_box())
-            .build(),
-    );
+    let pipeline = Box::new(DefaultPipeline::builder().tts(tts.clone_box()).build());
     let service = Service::new("s1", pipeline, managers);
     let bus = service.bus();
 
@@ -209,10 +205,8 @@ async fn cancel_preserves_post_stop_enqueued_text() {
     wait_until(&names, |n| n.iter().any(|t| t == "tts.started")).await;
 
     // Cancel in-flight session.
-    bus.publish(Event::TurnTtsStopRequested {
-        meta: meta.clone(),
-    })
-    .await;
+    bus.publish(Event::TurnTtsStopRequested { meta: meta.clone() })
+        .await;
 
     // Enqueue during wind-down (after on_stop cleared the queue).
     bus.publish(Event::ResponseUpdate {

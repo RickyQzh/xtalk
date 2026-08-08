@@ -2,7 +2,10 @@
 fn parse_vad_start_fixture() {
     let raw = include_str!("../src/fixtures/vad_speech_start.json");
     let msg = xtalk_protocol::parse_inbound_text(raw).unwrap();
-    assert!(matches!(msg, xtalk_protocol::InboundMessage::VadSpeechStart));
+    assert!(matches!(
+        msg,
+        xtalk_protocol::InboundMessage::VadSpeechStart
+    ));
 }
 
 #[test]
@@ -62,8 +65,10 @@ fn parse_known_control_actions() {
         InboundMessage::TtsChunkPlayed { .. }
     ));
     assert!(matches!(
-        xtalk_protocol::parse_inbound_text(r#"{"action":"session_config","recording_path":"/tmp"}"#)
-            .unwrap(),
+        xtalk_protocol::parse_inbound_text(
+            r#"{"action":"session_config","recording_path":"/tmp"}"#
+        )
+        .unwrap(),
         InboundMessage::SessionConfig(_)
     ));
     assert!(matches!(
@@ -74,7 +79,8 @@ fn parse_known_control_actions() {
         InboundMessage::ClockSync { .. }
     ));
     assert!(matches!(
-        xtalk_protocol::parse_inbound_text(r#"{"action":"change_voice","voice_name":"a"}"#).unwrap(),
+        xtalk_protocol::parse_inbound_text(r#"{"action":"change_voice","voice_name":"a"}"#)
+            .unwrap(),
         InboundMessage::ChangeVoice { .. }
     ));
     assert!(matches!(

@@ -66,7 +66,10 @@ impl EventBus {
 
     /// Subscribe `handler` to `type_name`. Higher `priority` runs earlier.
     pub fn subscribe(&self, type_name: &str, priority: i32, handler: Handler) {
-        let mut guard = self.subs.lock().expect("event bus subscription lock poisoned");
+        let mut guard = self
+            .subs
+            .lock()
+            .expect("event bus subscription lock poisoned");
         let list = guard.entry(type_name.to_string()).or_default();
         list.push(Sub { priority, handler });
         list.sort_by(|a, b| b.priority.cmp(&a.priority));
@@ -145,9 +148,7 @@ impl EventBus {
             return false;
         }
 
-        state
-            .error_event_times
-            .retain(|t| current_time - *t < 1.0);
+        state.error_event_times.retain(|t| current_time - *t < 1.0);
         if state.error_event_times.len() >= ERROR_EVENT_RATE_LIMIT {
             tracing::warn!(
                 limit = ERROR_EVENT_RATE_LIMIT,

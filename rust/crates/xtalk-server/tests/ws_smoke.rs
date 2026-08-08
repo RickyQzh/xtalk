@@ -1,6 +1,7 @@
 //! Integration smoke: ping → pong over `/ws`.
 
 use std::net::SocketAddr;
+use std::str::FromStr;
 use std::time::Duration;
 
 use futures_util::{SinkExt, StreamExt};
