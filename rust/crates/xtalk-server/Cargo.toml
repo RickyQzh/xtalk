@@ -5,6 +5,10 @@ edition.workspace = true
 license.workspace = true
 description = "X-Talk Rust runtime server binary"
 
+[lib]
+name = "xtalk_server"
+path = "src/lib.rs"
+
 [[bin]]
 name = "xtalk-server"
 path = "src/main.rs"
@@ -13,4 +17,22 @@ path = "src/main.rs"
 xtalk-serving = { path = "../xtalk-serving" }
 xtalk-pipeline = { path = "../xtalk-pipeline" }
 xtalk-models = { path = "../xtalk-models" }
+xtalk-bus = { path = "../xtalk-bus" }
 tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+bytes = { workspace = true }
+async-trait = { workspace = true }
+tracing = { workspace = true }
+axum = { version = "0.7", features = ["ws"] }
+futures-util = "0.3"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+# Pin <4.6: clap 4.6+ needs edition2024 / Rust 1.85.
+clap = { version = "=4.5.40", features = ["derive"] }
+
+[dev-dependencies]
+tokio = { workspace = true }
+tokio-tungstenite = "0.24"
+futures-util = "0.3"
+serde_json = { workspace = true }

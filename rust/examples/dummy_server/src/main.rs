@@ -1,13 +1,13 @@
-//! xtalk-server binary entrypoint.
+//! Dummy-model example server (config-driven xtalk-server).
 
 use clap::Parser;
 use tracing_subscriber::EnvFilter;
 use xtalk_server::{serve, ServerConfig};
 
 #[derive(Debug, Parser)]
-#[command(name = "xtalk-server", about = "X-Talk Rust runtime server")]
+#[command(name = "dummy_server", about = "X-Talk Rust dummy pipeline demo")]
 struct Args {
-    /// Path to JSON server config.
+    /// Path to JSON server config (defaults to bundled dummy config).
     #[arg(long, default_value = "examples/dummy_server/config.dummy.json")]
     config: String,
 }
@@ -20,5 +20,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     let args = Args::parse();
     let cfg = ServerConfig::from_path(&args.config)?;
+    tracing::info!(listen = %cfg.listen, "starting dummy_server");
     serve(cfg).await
 }

@@ -8,6 +8,7 @@ members = [
   "crates/xtalk-protocol",
   "crates/xtalk-serving",
   "crates/xtalk-server",
+  "examples/dummy_server",
 ]
 [workspace.package]
 edition = "2021"

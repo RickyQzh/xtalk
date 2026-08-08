@@ -5,16 +5,20 @@ use std::sync::Arc;
 
 use tokio::sync::Mutex;
 use uuid::Uuid;
-
+use xtalk_bus::EventBus;
 use xtalk_pipeline::Pipeline;
 
 use crate::modules::WsSink;
+use crate::service::{ManagerBundle, Service};
 use crate::session_limiter::{LimitError, SessionLimiter, SessionPermit};
-use crate::service::Service;
-use crate::Manager;
 
 /// Factory that produces a fresh pipeline per session.
 pub type PipelineFactory = Arc<dyn Fn() -> Box<dyn Pipeline> + Send + Sync>;
+
+/// Builds managers/gateways once the session bus and WebSocket sink exist.
+pub type ManagerFactory = Arc<
+    dyn Fn(&str, &dyn Pipeline, Arc<EventBus>, Arc<dyn WsSink>) -> ManagerBundle + Send + Sync,
+>;
 
 struct SessionEntry {
     service: Arc<Service>,
@@ -26,6 +30,7 @@ struct SessionEntry {
 pub struct ServiceManager {
     limiter: SessionLimiter,
     pipeline_factory: PipelineFactory,
+    manager_factory: Option<ManagerFactory>,
     sessions: Mutex<HashMap<String, SessionEntry>>,
 }
 
@@ -35,27 +40,42 @@ impl ServiceManager {
         Self {
             limiter: SessionLimiter::new(max_sessions),
             pipeline_factory,
+            manager_factory: None,
             sessions: Mutex::new(HashMap::new()),
         }
     }
 
+    /// Attach a manager/gateway factory used when `connect` receives a [`WsSink`].
+    pub fn with_manager_factory(mut self, factory: ManagerFactory) -> Self {
+        self.manager_factory = Some(factory);
+        self
+    }
+
     /// Create a session, acquire a limiter permit, and track it.
     ///
-    /// `sink` is accepted for forward compatibility with Task 12 (WebSocket
-    /// gateways need a [`WsSink`]). For Task 11 the service is created with an
-    /// empty managers list — gateways are not registered yet.
+    /// When both `sink` and a [`ManagerFactory`] are present, gateways and model
+    /// managers are registered on the session bus. Otherwise the service is
+    /// created with an empty managers list (useful for limiter unit tests).
     ///
     /// `user_id` is reserved for persistence/auth wiring later.
     pub async fn connect(
         &self,
-        _sink: Option<Arc<dyn WsSink>>,
+        sink: Option<Arc<dyn WsSink>>,
         _user_id: Option<&str>,
     ) -> Result<Arc<Service>, LimitError> {
         let permit = self.limiter.acquire().await?;
         let session_id = Uuid::new_v4().to_string();
         let pipeline = (self.pipeline_factory)();
-        let managers: Vec<Arc<dyn Manager>> = Vec::new();
-        let service = Service::new(session_id.clone(), pipeline, managers);
+
+        let service = match (sink, self.manager_factory.as_ref()) {
+            (Some(sink), Some(factory)) => {
+                let factory = Arc::clone(factory);
+                Service::build(session_id.clone(), pipeline, move |sid, pipe, bus| {
+                    factory(sid, pipe, bus, sink)
+                })
+            }
+            _ => Service::new(session_id.clone(), pipeline, Vec::new()),
+        };
 
         self.sessions.lock().await.insert(
             session_id,
