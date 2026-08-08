@@ -55,10 +55,34 @@ Config slots (`asr` / `tts` / `llm_agent` / `vad`) currently accept:
 
 | `type` | Status |
 |--------|--------|
-| `dummy` | Supported now |
-| `openai_compat` | Coming next (HTTP chat agent) |
+| `dummy` | Supported now (ASR / TTS / VAD / Agent) |
+| `openai_compat` | Supported now (`llm_agent` only: `HttpChatAgent`) |
 
 Unknown types fail at server startup.
+
+### HttpChatAgent (`openai_compat`)
+
+`llm_agent.type: openai_compat` builds `HttpChatAgent`, which streams OpenAI-compatible `/chat/completions` over SSE. Example config:
+
+```bash
+cd rust && cargo run -p dummy_server -- --config examples/dummy_server/config.openai.json
+```
+
+`examples/dummy_server/config.openai.json` highlights:
+
+- `params.base_url`: e.g. `https://api.openai.com/v1`
+- `params.api_key`: supports `${OPENAI_API_KEY}` env expansion; missing vars fail startup with `MissingEnv`
+- `params.model`: e.g. `gpt-4o-mini`
+- ASR / TTS / VAD can remain `dummy`
+
+Run with a key:
+
+```bash
+export OPENAI_API_KEY=sk-...
+cd rust && cargo run -p dummy_server -- --config examples/dummy_server/config.openai.json
+```
+
+Barge-in cancels an in-flight HTTP request (slow TTFB and mid-stream cancel are both covered).
 
 ## Differences vs the Python service
 
@@ -69,6 +93,6 @@ Unknown types fail at server startup.
 | Recording | `session_config` → RecordingManager | Parsed inbound; **no recording manager** |
 | Latency metrics | `latency_metrics` outbound frames | **Not sent** (avoids incomplete objects) |
 | HTTP surface | `/api/auth/login`, sessions, upload, static | `GET /` hint + `WS /ws` only |
-| Models | Many ASR/TTS/LLM backends | `dummy` only for now |
+| Models | Many ASR/TTS/LLM backends | `dummy` + `openai_compat` for `llm_agent` |
 
 Inbound fixtures used by protocol canaries live under `rust/crates/xtalk-protocol/src/fixtures/` (for example `ping.json`, `session_config.json`).

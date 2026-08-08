@@ -55,10 +55,34 @@ websocat ws://127.0.0.1:11995/ws
 
 | `type` | 状态 |
 |--------|------|
-| `dummy` | 现已支持 |
-| `openai_compat` | 下一阶段（HTTP chat agent） |
+| `dummy` | 现已支持（ASR / TTS / VAD / Agent） |
+| `openai_compat` | 现已支持（仅 `llm_agent`：`HttpChatAgent`） |
 
 未知 type 会在服务启动时报错。
+
+### HttpChatAgent（`openai_compat`）
+
+`llm_agent.type: openai_compat` 会构建 `HttpChatAgent`，向 OpenAI 兼容的 `/chat/completions` 发起 **SSE 流式**请求。示例配置：
+
+```bash
+cd rust && cargo run -p dummy_server -- --config examples/dummy_server/config.openai.json
+```
+
+`examples/dummy_server/config.openai.json` 要点：
+
+- `params.base_url`：例如 `https://api.openai.com/v1`
+- `params.api_key`：支持 `${OPENAI_API_KEY}` 环境变量展开；缺失变量时启动失败并报 `MissingEnv`
+- `params.model`：例如 `gpt-4o-mini`
+- ASR / TTS / VAD 仍可用 `dummy`
+
+设置密钥后启动：
+
+```bash
+export OPENAI_API_KEY=sk-...
+cd rust && cargo run -p dummy_server -- --config examples/dummy_server/config.openai.json
+```
+
+打断时（barge-in）会 cancel 进行中的 HTTP 请求；取消路径覆盖慢 TTFB 与中途流式输出。
 
 ## 与 Python 服务的差异
 
@@ -69,6 +93,6 @@ websocat ws://127.0.0.1:11995/ws
 | Recording | `session_config` → RecordingManager | 可解析入站；**无 recording manager** |
 | 延迟指标 | 出站 `latency_metrics` | **不发送**（避免残缺对象） |
 | HTTP 面 | `/api/auth/login`、sessions、upload、静态页 | 仅 `GET /` 提示 + `WS /ws` |
-| 模型 | 多种 ASR/TTS/LLM | 目前仅 `dummy` |
+| 模型 | 多种 ASR/TTS/LLM | `dummy` + `llm_agent` 的 `openai_compat` |
 
 协议金丝雀使用的入站 fixture 位于 `rust/crates/xtalk-protocol/src/fixtures/`（例如 `ping.json`、`session_config.json`）。

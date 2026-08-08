@@ -1,7 +1,8 @@
 # X-Talk Rust 迁移翻译版 — 设计规格
 
 **日期:** 2026-08-08  
-**状态:** Draft for review  
+**状态:** Accepted  
+**实现计划:** [2026-08-08-rust-port-implementation.md](../plans/2026-08-08-rust-port-implementation.md)  
 **范围:** 在现有 Python X-Talk 之上，新增架构等价的 Rust 后端运行时（`xtalk-rs`），而非整仓机械翻译。
 
 ---
