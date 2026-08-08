@@ -6,3 +6,11 @@ license.workspace = true
 description = "ASR, TTS, and LLM model interfaces for the X-Talk Rust runtime"
 
 [dependencies]
+async-trait = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+tokio-util = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true }
+tokio-util = { workspace = true }
