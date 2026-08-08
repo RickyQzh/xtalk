@@ -150,6 +150,10 @@ async fn speech_start_cancels_tts() {
         "expected turn.tts_stop_requested; got {got:?}"
     );
     assert!(
+        got.iter().any(|t| t == "turn.llm_agent_stop_requested"),
+        "expected turn.llm_agent_stop_requested; got {got:?}"
+    );
+    assert!(
         got.iter().any(|t| t == "tts.stopped"),
         "expected tts.stopped; got {got:?}"
     );

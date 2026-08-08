@@ -1,5 +1,6 @@
 //! TtsManager — synthesize response text into TTS chunk events.
 
+use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 
 use tokio_util::sync::CancellationToken;
@@ -9,12 +10,28 @@ use xtalk_models::Tts;
 
 use crate::Manager;
 
+struct TtsState {
+    /// Pending sentence texts (FIFO). New [`Event::ResponseUpdate`] enqueues;
+    /// they are not cancelled by later updates in the same generation.
+    queue: VecDeque<String>,
+    /// Cancel token for the in-flight worker session. Replaced on stop so a
+    /// later enqueue can start a fresh session.
+    cancel: CancellationToken,
+    worker_running: bool,
+}
+
+enum SynthOutcome {
+    Finished,
+    Cancelled,
+    Error,
+}
+
 /// Subscribes to [`Event::ResponseUpdate`], runs TTS, and emits
 /// started / chunk / finished (or stopped on cancel).
 pub struct TtsManager {
     session_id: String,
     tts: Arc<dyn Tts>,
-    cancel: Mutex<Option<CancellationToken>>,
+    state: Mutex<TtsState>,
 }
 
 impl TtsManager {
@@ -22,7 +39,11 @@ impl TtsManager {
         Self {
             session_id: session_id.into(),
             tts,
-            cancel: Mutex::new(None),
+            state: Mutex::new(TtsState {
+                queue: VecDeque::new(),
+                cancel: CancellationToken::new(),
+                worker_running: false,
+            }),
         }
     }
 
@@ -35,47 +56,117 @@ impl TtsManager {
             return;
         }
 
-        let token = CancellationToken::new();
         {
-            let mut guard = self.cancel.lock().expect("tts cancel poisoned");
-            if let Some(prev) = guard.take() {
-                prev.cancel();
-            }
-            *guard = Some(token.clone());
+            let mut state = self.state.lock().expect("tts state poisoned");
+            state.queue.push_back(text);
         }
-
-        let this = Arc::clone(self);
-        tokio::spawn(async move {
-            this.run_synthesis(bus, text, token).await;
-        });
+        self.spawn_worker_if_needed(bus);
     }
 
-    async fn run_synthesis(&self, bus: Arc<EventBus>, text: String, token: CancellationToken) {
+    fn spawn_worker_if_needed(self: &Arc<Self>, bus: Arc<EventBus>) {
+        let should_spawn = {
+            let mut state = self.state.lock().expect("tts state poisoned");
+            if state.worker_running || state.queue.is_empty() {
+                false
+            } else {
+                if state.cancel.is_cancelled() {
+                    state.cancel = CancellationToken::new();
+                }
+                state.worker_running = true;
+                true
+            }
+        };
+
+        if should_spawn {
+            let this = Arc::clone(self);
+            tokio::spawn(async move {
+                this.run_worker(bus).await;
+            });
+        }
+    }
+
+    async fn run_worker(self: Arc<Self>, bus: Arc<EventBus>) {
         bus.publish(Event::TtsStarted { meta: self.meta() })
             .await;
 
-        if token.is_cancelled() {
+        let mut cancelled = false;
+        loop {
+            let (text, token) = {
+                let mut state = self.state.lock().expect("tts state poisoned");
+                match state.queue.pop_front() {
+                    Some(text) => (text, state.cancel.clone()),
+                    None => {
+                        state.worker_running = false;
+                        break;
+                    }
+                }
+            };
+
+            if token.is_cancelled() {
+                cancelled = true;
+                break;
+            }
+
+            match self.synthesize_one(&bus, &text, &token).await {
+                SynthOutcome::Finished => {}
+                SynthOutcome::Cancelled => {
+                    cancelled = true;
+                    break;
+                }
+                SynthOutcome::Error => {
+                    // Match prior behavior: surface error, end this session
+                    // without a finished/stopped terminal event.
+                    let mut state = self.state.lock().expect("tts state poisoned");
+                    state.worker_running = false;
+                    self.spawn_worker_if_needed(bus);
+                    return;
+                }
+            }
+        }
+
+        {
+            let mut state = self.state.lock().expect("tts state poisoned");
+            state.worker_running = false;
+            if cancelled {
+                state.queue.clear();
+            }
+        }
+
+        if cancelled {
             bus.publish(Event::TtsStopped { meta: self.meta() })
                 .await;
-            return;
+        } else {
+            bus.publish(Event::TtsFinished { meta: self.meta() })
+                .await;
+        }
+
+        // Work may have been enqueued while this session was winding down
+        // (including after stop replaced the cancel token).
+        self.spawn_worker_if_needed(bus);
+    }
+
+    async fn synthesize_one(
+        &self,
+        bus: &EventBus,
+        text: &str,
+        token: &CancellationToken,
+    ) -> SynthOutcome {
+        if token.is_cancelled() {
+            return SynthOutcome::Cancelled;
         }
 
         tokio::select! {
-            _ = token.cancelled() => {
-                bus.publish(Event::TtsStopped { meta: self.meta() }).await;
-            }
-            result = self.tts.synthesize_stream(&text) => {
+            _ = token.cancelled() => SynthOutcome::Cancelled,
+            result = self.tts.synthesize_stream(text) => {
                 if token.is_cancelled() {
-                    bus.publish(Event::TtsStopped { meta: self.meta() }).await;
-                    return;
+                    return SynthOutcome::Cancelled;
                 }
                 match result {
                     Ok(chunks) => {
                         let sample_rate = self.tts.sample_rate();
                         for audio_chunk in chunks {
                             if token.is_cancelled() {
-                                bus.publish(Event::TtsStopped { meta: self.meta() }).await;
-                                return;
+                                return SynthOutcome::Cancelled;
                             }
                             bus.publish(Event::TtsChunkReady {
                                 meta: self.meta(),
@@ -85,11 +176,10 @@ impl TtsManager {
                             .await;
                         }
                         if token.is_cancelled() {
-                            bus.publish(Event::TtsStopped { meta: self.meta() }).await;
-                            return;
+                            SynthOutcome::Cancelled
+                        } else {
+                            SynthOutcome::Finished
                         }
-                        bus.publish(Event::TtsFinished { meta: self.meta() })
-                            .await;
                     }
                     Err(err) => {
                         tracing::error!(error = %err, "TTS synthesize failed");
@@ -98,6 +188,7 @@ impl TtsManager {
                             error_message: err.to_string(),
                         })
                         .await;
+                        SynthOutcome::Error
                     }
                 }
             }
@@ -105,9 +196,12 @@ impl TtsManager {
     }
 
     fn on_stop(&self) {
-        if let Some(token) = self.cancel.lock().expect("tts cancel poisoned").take() {
-            token.cancel();
-        }
+        let mut state = self.state.lock().expect("tts state poisoned");
+        state.queue.clear();
+        state.cancel.cancel();
+        // Fresh token for any subsequent ResponseUpdate session. The in-flight
+        // worker retains a clone of the cancelled token.
+        state.cancel = CancellationToken::new();
     }
 }
 

@@ -8,7 +8,12 @@ use xtalk_events::{Event, EventMeta};
 use crate::Manager;
 
 struct TurnState {
-    tts_active: bool,
+    /// Nested TTS session depth (unmatched `tts.started` count).
+    ///
+    /// Using a depth/refcount instead of a bool so a superseded session's
+    /// `tts.stopped` cannot clear activity while a newer session is already
+    /// active (Started A → Started B → Stopped A must leave barge-in armed).
+    tts_active_depth: u32,
 }
 
 /// Tracks TTS activity and interrupts generation on client VAD speech start.
@@ -21,7 +26,9 @@ impl TurnTakingManager {
     pub fn new(session_id: impl Into<String>) -> Self {
         Self {
             session_id: session_id.into(),
-            state: Mutex::new(TurnState { tts_active: false }),
+            state: Mutex::new(TurnState {
+                tts_active_depth: 0,
+            }),
         }
     }
 
@@ -29,23 +36,31 @@ impl TurnTakingManager {
         EventMeta::new(self.session_id.clone())
     }
 
-    fn set_tts_active(&self, active: bool) {
+    fn on_tts_started(&self) {
         self.state
             .lock()
             .expect("turn taking state poisoned")
-            .tts_active = active;
+            .tts_active_depth += 1;
+    }
+
+    fn on_tts_ended(&self) {
+        let mut state = self.state.lock().expect("turn taking state poisoned");
+        state.tts_active_depth = state.tts_active_depth.saturating_sub(1);
+    }
+
+    fn tts_active(&self) -> bool {
+        self.state
+            .lock()
+            .expect("turn taking state poisoned")
+            .tts_active_depth
+            > 0
     }
 
     async fn on_vad_speech_start(&self, bus: &EventBus, origin: &str) {
         if origin != "client" {
             return;
         }
-        let tts_active = self
-            .state
-            .lock()
-            .expect("turn taking state poisoned")
-            .tts_active;
-        if !tts_active {
+        if !self.tts_active() {
             return;
         }
 
@@ -89,7 +104,7 @@ impl Manager for TurnTakingManager {
                 Arc::new(move |_ev| {
                     let this = Arc::clone(&this);
                     Box::pin(async move {
-                        this.set_tts_active(true);
+                        this.on_tts_started();
                     })
                 }),
             );
@@ -102,7 +117,7 @@ impl Manager for TurnTakingManager {
                 Arc::new(move |_ev| {
                     let this = Arc::clone(&this);
                     Box::pin(async move {
-                        this.set_tts_active(false);
+                        this.on_tts_ended();
                     })
                 }),
             );
