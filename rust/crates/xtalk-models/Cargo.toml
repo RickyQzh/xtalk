@@ -10,7 +10,23 @@ async-trait = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tokio-util = { workspace = true }
+reqwest = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+futures-util = { workspace = true }
+bytes = { workspace = true }
+# Transitive pins for Rust 1.83 (see workspace.dependencies).
+zeroize = { workspace = true }
+indexmap = { workspace = true }
+hashbrown = { workspace = true }
+idna_adapter = { workspace = true }
+hyper-rustls = { workspace = true }
+security-framework = { workspace = true }
+cc = { workspace = true }
+jobserver = { workspace = true }
 
 [dev-dependencies]
 tokio = { workspace = true }
 tokio-util = { workspace = true }
+wiremock = { workspace = true }
+tempfile = { workspace = true }

@@ -15,6 +15,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@1.83.0
         with:
           components: rustfmt, clippy
+      # reqwest default-tls needs OpenSSL headers on Linux.
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq libssl-dev pkg-config
       - run: cargo fmt --all -- --check
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo test --workspace

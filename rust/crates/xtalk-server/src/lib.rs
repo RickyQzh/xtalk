@@ -6,4 +6,4 @@ pub mod config;
 
 pub use app::{build_app, build_session_managers, serve, AppState};
 pub use auth::{AuthError, AuthMode, WsAuthQuery};
-pub use config::{build_pipeline, ConfigError, ModelSpec, ServerConfig};
+pub use config::{build_pipeline, expand_env, ConfigError, ModelSpec, ServerConfig};

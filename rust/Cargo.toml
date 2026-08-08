@@ -22,7 +22,23 @@ bytes = "1"
 thiserror = "2"
 async-trait = "0.1"
 tracing = "0.1"
-# Pin <1.20: newer uuid pulls getrandom 0.4 which needs Rust 1.85 / edition2024.
-uuid = { version = "=1.18.1", features = ["v4"] }
+# Pin <1.13: uuid 1.13+ pulls getrandom 0.3 → wasi → wasip2/wit-bindgen (edition2024).
+uuid = { version = "=1.12.0", features = ["v4"] }
 futures = { version = "0.3", default-features = false, features = ["std", "async-await"] }
 tokio-util = { version = "0.7", features = ["rt"] }
+# Pin 0.12: works on Rust 1.83; 0.13 may pull newer MSRV deps.
+# Uses default-tls (native-tls); needs libssl-dev on Linux CI images.
+reqwest = { version = "0.12", default-features = true, features = ["json", "stream"] }
+wiremock = { version = "=0.6.4" }
+futures-util = "0.3"
+# Pins below keep the reqwest/wiremock graph on Rust 1.83 (no edition2024 crates).
+zeroize = { version = "=1.8.1" }
+indexmap = { version = "=2.7.1" }
+hashbrown = { version = "=0.15.2" }
+idna_adapter = { version = "=1.2.0" }
+hyper-rustls = { version = "=0.27.5" }
+security-framework = { version = "=3.2.0" }
+tempfile = { version = "=3.14.0" }
+# cc 1.4+ pulls jobserver 0.1.35 → getrandom 0.4 (edition2024).
+cc = { version = "=1.2.27" }
+jobserver = { version = "=0.1.32" }
