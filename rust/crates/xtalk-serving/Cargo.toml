@@ -1,0 +1,13 @@
+[package]
+name = "xtalk-serving"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Serving layer (gateways and managers) for the X-Talk Rust runtime"
+
+[dependencies]
+xtalk-events = { path = "../xtalk-events" }
+xtalk-bus = { path = "../xtalk-bus" }
+xtalk-models = { path = "../xtalk-models" }
+xtalk-pipeline = { path = "../xtalk-pipeline" }
+xtalk-protocol = { path = "../xtalk-protocol" }

@@ -1,0 +1,9 @@
+[package]
+name = "xtalk-bus"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Event bus for the X-Talk Rust runtime"
+
+[dependencies]
+xtalk-events = { path = "../xtalk-events" }

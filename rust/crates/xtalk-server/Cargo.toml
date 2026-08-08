@@ -1,0 +1,16 @@
+[package]
+name = "xtalk-server"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "X-Talk Rust runtime server binary"
+
+[[bin]]
+name = "xtalk-server"
+path = "src/main.rs"
+
+[dependencies]
+xtalk-serving = { path = "../xtalk-serving" }
+xtalk-pipeline = { path = "../xtalk-pipeline" }
+xtalk-models = { path = "../xtalk-models" }
+tokio = { workspace = true }
