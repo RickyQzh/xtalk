@@ -278,7 +278,7 @@ mod tests {
 
     #[test]
     fn builds_openai_compat_agent_with_env_expansion() {
-        std::env::set_var("OPENAI_API_KEY", "sk-test");
+        std::env::set_var("XTALK_TEST_OPENAI_API_KEY", "sk-test");
         let json = r#"{
             "asr": { "type": "dummy", "params": {} },
             "tts": { "type": "dummy", "params": {} },
@@ -286,7 +286,7 @@ mod tests {
                 "type": "openai_compat",
                 "params": {
                     "base_url": "https://api.openai.com/v1",
-                    "api_key": "${OPENAI_API_KEY}",
+                    "api_key": "${XTALK_TEST_OPENAI_API_KEY}",
                     "model": "gpt-4o-mini"
                 }
             }
@@ -294,12 +294,11 @@ mod tests {
         let cfg = ServerConfig::from_str(json).unwrap();
         let pipeline = build_pipeline(&cfg).expect("openai_compat pipeline");
         assert!(pipeline.agent().is_some());
-        std::env::remove_var("OPENAI_API_KEY");
+        std::env::remove_var("XTALK_TEST_OPENAI_API_KEY");
     }
 
     #[test]
     fn openai_compat_missing_env_fails_clearly() {
-        std::env::remove_var("OPENAI_API_KEY");
         let json = r#"{
             "asr": { "type": "dummy", "params": {} },
             "tts": { "type": "dummy", "params": {} },
@@ -307,14 +306,16 @@ mod tests {
                 "type": "openai_compat",
                 "params": {
                     "base_url": "https://api.openai.com/v1",
-                    "api_key": "${OPENAI_API_KEY}",
+                    "api_key": "${XTALK_TEST_OPENAI_API_KEY_ABSENT}",
                     "model": "gpt-4o-mini"
                 }
             }
         }"#;
         let cfg = ServerConfig::from_str(json).unwrap();
         match build_pipeline(&cfg) {
-            Err(ConfigError::MissingEnv { name }) => assert_eq!(name, "OPENAI_API_KEY"),
+            Err(ConfigError::MissingEnv { name }) => {
+                assert_eq!(name, "XTALK_TEST_OPENAI_API_KEY_ABSENT")
+            }
             Ok(_) => panic!("expected MissingEnv, got Ok(_)"),
             Err(err) => panic!("expected MissingEnv, got {err}"),
         }
