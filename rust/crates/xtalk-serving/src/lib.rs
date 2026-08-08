@@ -3,6 +3,8 @@
 mod manager;
 mod modules;
 mod service;
+mod service_manager;
+mod session_limiter;
 
 pub use manager::Manager;
 pub use modules::{
@@ -10,6 +12,8 @@ pub use modules::{
     TtsManager, TurnTakingManager, VadManager, WsSink, PRE_ROLL_FRAMES,
 };
 pub use service::Service;
+pub use service_manager::{PipelineFactory, ServiceManager};
+pub use session_limiter::{LimitError, SessionLimiter, SessionPermit};
 
 pub fn crate_name() -> &'static str {
     "xtalk-serving"
