@@ -1,10 +1,14 @@
-//! Serving modules: WebSocket gateways and (later) ASR/TTS/VAD managers.
+//! Serving modules: WebSocket gateways and ASR/TTS/VAD managers.
 
+mod asr_manager;
 mod input_gateway;
 mod output_gateway;
+mod vad_manager;
 
+pub use asr_manager::{AsrManager, PRE_ROLL_FRAMES};
 pub use input_gateway::InputGateway;
 pub use output_gateway::OutputGateway;
+pub use vad_manager::VadManager;
 
 use async_trait::async_trait;
 use bytes::Bytes;
