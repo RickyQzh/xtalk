@@ -12,6 +12,7 @@ xtalk-models = { path = "../xtalk-models" }
 xtalk-pipeline = { path = "../xtalk-pipeline" }
 xtalk-protocol = { path = "../xtalk-protocol" }
 tokio = { workspace = true }
+tokio-util = { workspace = true }
 async-trait = { workspace = true }
 bytes = { workspace = true }
 serde_json = { workspace = true }
@@ -19,5 +20,6 @@ tracing = { workspace = true }
 
 [dev-dependencies]
 tokio = { workspace = true }
+tokio-util = { workspace = true }
 async-trait = { workspace = true }
 bytes = { workspace = true }
