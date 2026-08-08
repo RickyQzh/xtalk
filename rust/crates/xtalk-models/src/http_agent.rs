@@ -43,7 +43,9 @@ impl HttpChatAgent {
         cancel: &CancellationToken,
     ) -> Result<Vec<String>, ModelError> {
         let mut buffer = String::new();
-        let mut parts = Vec::new();
+        // Phase 2: coalesce all SSE content deltas into one response part so
+        // LlmAgentGenerationManager emits a single ResponseUpdate (not token fragments).
+        let mut joined = String::new();
 
         loop {
             if cancel.is_cancelled() {
@@ -72,7 +74,7 @@ impl HttpChatAgent {
                             line.pop();
                         }
                         if let Some(content) = parse_sse_data_line(&line)? {
-                            parts.push(content);
+                            joined.push_str(&content);
                         }
                     }
                 }
@@ -82,11 +84,15 @@ impl HttpChatAgent {
         // Flush a trailing line without newline, if any.
         if !buffer.trim().is_empty() {
             if let Some(content) = parse_sse_data_line(buffer.trim_end_matches('\r'))? {
-                parts.push(content);
+                joined.push_str(&content);
             }
         }
 
-        Ok(parts)
+        if joined.is_empty() {
+            Ok(Vec::new())
+        } else {
+            Ok(vec![joined])
+        }
     }
 }
 

@@ -39,7 +39,8 @@ async fn streams_chat_completion_deltas() {
         .await
         .expect("accept should succeed");
 
-    assert_eq!(out, vec!["Hello".to_string(), " world".to_string()]);
+    // Deltas are coalesced into one response part (not per-token fragments).
+    assert_eq!(out, vec!["Hello world".to_string()]);
 }
 
 /// Minimal HTTP/1.1 server: responds with one SSE chunk, then stalls (never closes).
