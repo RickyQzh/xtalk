@@ -7,3 +7,9 @@ description = "Event bus for the X-Talk Rust runtime"
 
 [dependencies]
 xtalk-events = { path = "../xtalk-events" }
+tokio = { workspace = true }
+tracing = { workspace = true }
+futures = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true }
