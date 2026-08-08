@@ -7,3 +7,6 @@ description = "Dialogue pipeline orchestration for the X-Talk Rust runtime"
 
 [dependencies]
 xtalk-models = { path = "../xtalk-models" }
+
+[dev-dependencies]
+tokio = { workspace = true }
