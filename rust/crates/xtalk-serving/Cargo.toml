@@ -11,3 +11,7 @@ xtalk-bus = { path = "../xtalk-bus" }
 xtalk-models = { path = "../xtalk-models" }
 xtalk-pipeline = { path = "../xtalk-pipeline" }
 xtalk-protocol = { path = "../xtalk-protocol" }
+tokio = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true }
