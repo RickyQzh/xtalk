@@ -138,16 +138,24 @@ impl Agent for HttpChatAgent {
             ]
         });
 
-        let response = self
-            .client
-            .post(self.completions_url())
-            .bearer_auth(&self.api_key)
-            .json(&body)
-            .send()
-            .await
-            .map_err(|err| {
-                ModelError::message(format!("chat completions request failed: {err}"))
-            })?;
+        // Abortable TTFB: cancel must interrupt a slow/hung `.send()`, not only
+        // subsequent SSE chunk reads.
+        let response = tokio::select! {
+            biased;
+            _ = cancel.cancelled() => {
+                return Err(ModelError::Cancelled);
+            }
+            result = self
+                .client
+                .post(self.completions_url())
+                .bearer_auth(&self.api_key)
+                .json(&body)
+                .send() => {
+                result.map_err(|err| {
+                    ModelError::message(format!("chat completions request failed: {err}"))
+                })?
+            }
+        };
 
         if !response.status().is_success() {
             let status = response.status();
