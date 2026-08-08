@@ -26,6 +26,7 @@ impl OutputGateway {
 
     /// Notify the client that the session is ready (called by Service later).
     pub async fn send_session_attached(&self) {
+        // Always include `session_id` (frontend session.ts reads this key).
         let msg = outbound_action(
             SESSION_ATTACHED,
             serde_json::json!({ "session_id": self.session_id }),
@@ -38,31 +39,22 @@ impl OutputGateway {
             Event::AsrResultPartial {
                 text, display_text, ..
             } => {
-                let display = if display_text.is_empty() {
-                    text
-                } else {
-                    display_text
-                };
-                let msg = outbound_action(UPDATE_ASR, serde_json::json!({ "text": display }));
+                let msg = outbound_action(UPDATE_ASR, text_data(asr_display(text, display_text)));
                 self.sink.send_text(msg).await;
             }
             Event::AsrResultFinal {
                 text, display_text, ..
             } => {
-                let display = if display_text.is_empty() {
-                    text
-                } else {
-                    display_text
-                };
-                let msg = outbound_action(FINISH_ASR, serde_json::json!({ "text": display }));
+                let msg = outbound_action(FINISH_ASR, text_data(asr_display(text, display_text)));
                 self.sink.send_text(msg).await;
             }
             Event::ResponseUpdate { text, .. } => {
-                let msg = outbound_action(UPDATE_RESP, serde_json::json!({ "text": text }));
+                // Frontend messages.ts requires `data.text`.
+                let msg = outbound_action(UPDATE_RESP, text_data(text));
                 self.sink.send_text(msg).await;
             }
             Event::ResponseFinish { text, .. } => {
-                let msg = outbound_action(FINISH_RESP, serde_json::json!({ "text": text }));
+                let msg = outbound_action(FINISH_RESP, text_data(text));
                 self.sink.send_text(msg).await;
             }
             Event::TtsStarted { .. } => {
@@ -86,9 +78,25 @@ impl OutputGateway {
                 let msg = outbound_action(ERROR, error_message);
                 self.sink.send_text(msg).await;
             }
+            // Intentionally omit `latency_metrics`: Phase 1 has no LatencyManager.
+            // Do not emit a partial object (frontend expects all *_ms fields).
             _ => {}
         }
     }
+}
+
+/// Prefer non-empty `display_text`; otherwise fall back to `text` (may be empty).
+fn asr_display(text: String, display_text: String) -> String {
+    if display_text.is_empty() {
+        text
+    } else {
+        display_text
+    }
+}
+
+/// Outbound payload with a guaranteed `text` key (never omit the field).
+fn text_data(text: impl Into<String>) -> serde_json::Value {
+    serde_json::json!({ "text": text.into() })
 }
 
 impl Manager for OutputGateway {

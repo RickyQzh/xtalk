@@ -6,6 +6,29 @@ fn parse_vad_start_fixture() {
 }
 
 #[test]
+fn parse_ping_fixture() {
+    let raw = include_str!("../src/fixtures/ping.json");
+    let msg = xtalk_protocol::parse_inbound_text(raw).unwrap();
+    assert!(matches!(
+        msg,
+        xtalk_protocol::InboundMessage::Ping { timestamp } if (timestamp - 1.5).abs() < f64::EPSILON
+    ));
+}
+
+#[test]
+fn parse_session_config_fixture() {
+    let raw = include_str!("../src/fixtures/session_config.json");
+    let msg = xtalk_protocol::parse_inbound_text(raw).unwrap();
+    match msg {
+        xtalk_protocol::InboundMessage::SessionConfig(value) => {
+            assert_eq!(value["action"], "session_config");
+            assert_eq!(value["recording_path"], "logs/session_audio/demo.wav");
+        }
+        other => panic!("expected SessionConfig, got {other:?}"),
+    }
+}
+
+#[test]
 fn outbound_shape() {
     let s = xtalk_protocol::outbound_action("update_asr", serde_json::json!({"text":"hi"}));
     let v: serde_json::Value = serde_json::from_str(&s).unwrap();
