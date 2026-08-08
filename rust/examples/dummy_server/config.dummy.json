@@ -1,0 +1,8 @@
+{
+  "listen": "0.0.0.0:11995",
+  "max_sessions": 32,
+  "asr": { "type": "dummy", "params": { "default_text": "hello from rust" } },
+  "tts": { "type": "dummy", "params": { "sample_rate": 48000 } },
+  "llm_agent": { "type": "dummy", "params": { "default_response": "Rust dummy reply." } },
+  "vad": { "type": "dummy", "params": {} }
+}

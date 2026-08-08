@@ -1,0 +1,15 @@
+{
+  "listen": "0.0.0.0:11995",
+  "max_sessions": 32,
+  "asr": { "type": "dummy", "params": { "default_text": "hello from rust" } },
+  "tts": { "type": "dummy", "params": { "sample_rate": 48000 } },
+  "llm_agent": {
+    "type": "openai_compat",
+    "params": {
+      "base_url": "https://api.openai.com/v1",
+      "api_key": "${OPENAI_API_KEY}",
+      "model": "gpt-4o-mini"
+    }
+  },
+  "vad": { "type": "dummy", "params": {} }
+}

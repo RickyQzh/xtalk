@@ -1,0 +1,18 @@
+[package]
+name = "dummy_server"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Dummy-model demo server for the X-Talk Rust runtime"
+publish = false
+
+[[bin]]
+name = "dummy_server"
+path = "src/main.rs"
+
+[dependencies]
+xtalk-server = { path = "../../crates/xtalk-server" }
+tokio = { workspace = true }
+clap = { version = "=4.5.40", features = ["derive"] }
+tracing = { workspace = true }
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
